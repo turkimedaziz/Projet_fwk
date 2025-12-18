@@ -1,7 +1,5 @@
 package tn.rnu.eniso.fwk.scan.core.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.w3c.dom.Document;
@@ -14,6 +12,9 @@ import tn.rnu.eniso.fwk.scan.core.infra.model.Port;
 import tn.rnu.eniso.fwk.scan.core.infra.model.ScanSession;
 import tn.rnu.eniso.fwk.scan.core.service.api.NmapService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import java.io.ByteArrayInputStream;
@@ -22,12 +23,17 @@ import java.util.ArrayList;
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class NmapServiceImpl implements NmapService {
+
+    private static final Logger log = LoggerFactory.getLogger(NmapServiceImpl.class);
 
     private final ScanSessionRepository scanSessionRepository;
     private final DeviceRepository deviceRepository;
+
+    public NmapServiceImpl(ScanSessionRepository scanSessionRepository, DeviceRepository deviceRepository) {
+        this.scanSessionRepository = scanSessionRepository;
+        this.deviceRepository = deviceRepository;
+    }
 
     @Override
     @Transactional

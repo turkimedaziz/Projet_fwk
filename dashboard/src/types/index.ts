@@ -1,5 +1,12 @@
 export type AlertSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
 
+export const AlertSeverity = {
+    LOW: 'LOW' as AlertSeverity,
+    MEDIUM: 'MEDIUM' as AlertSeverity,
+    HIGH: 'HIGH' as AlertSeverity,
+    CRITICAL: 'CRITICAL' as AlertSeverity
+};
+
 export interface Alert {
     id: number;
     timestamp: string;

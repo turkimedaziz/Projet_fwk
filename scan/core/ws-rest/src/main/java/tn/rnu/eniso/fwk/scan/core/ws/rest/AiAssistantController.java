@@ -1,7 +1,8 @@
 package tn.rnu.eniso.fwk.scan.core.ws.rest;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,15 +17,18 @@ import java.util.Map;
 /**
  * REST Controller for AI Assistant features.
  */
-@Slf4j
 @RestController
 @RequestMapping("/api/ai")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 public class AiAssistantController {
+    private static final Logger log = LoggerFactory.getLogger(AiAssistantController.class);
 
     private final AiAssistantService aiAssistantService;
     private final SuricataService suricataService;
+    public AiAssistantController(AiAssistantService aiAssistantService, SuricataService suricataService) {
+        this.aiAssistantService = aiAssistantService;
+        this.suricataService = suricataService;
+    }
 
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> checkHealth() {

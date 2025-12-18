@@ -2,7 +2,8 @@ package tn.rnu.eniso.fwk.scan.core.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -14,12 +15,11 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
- * Client for interacting with Hugging Face Inference API.
  */
-@Slf4j
 @Component
 public class HuggingFaceClient {
 
+    private static final Logger log = LoggerFactory.getLogger(HuggingFaceClient.class);
     private final WebClient webClient;
     private final String apiToken;
     private final String apiUrl;

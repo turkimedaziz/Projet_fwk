@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis-commander
+  namespace: project-fwk
+  labels:
+    app: redis-commander
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis-commander
+  template:
+    metadata:
+      labels:
+        app: redis-commander
+    spec:
+      containers:
+      - name: redis-commander
+        image: rediscommander/redis-commander:latest
+        imagePullPolicy: IfNotPresent
+        env:
+        - name: REDIS_HOSTS
+          value: "local:redis:6379"
+        ports:
+        - containerPort: 8081
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-commander
+  namespace: project-fwk
+spec:
+  type: NodePort
+  selector:
+    app: redis-commander
+  ports:
+  - port: 8081
+    targetPort: 8081
+    nodePort: 30083

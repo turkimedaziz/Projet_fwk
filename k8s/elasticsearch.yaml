@@ -4,6 +4,7 @@ metadata:
   name: elasticsearch-data
   namespace: project-fwk
 spec:
+  storageClassName: local-path
   accessModes:
     - ReadWriteOnce
   resources:

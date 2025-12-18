@@ -9,6 +9,20 @@ data:
         listen 80;
         server_name localhost;
         
+        # Redirect all HTTP to HTTPS
+        return 301 https://$server_name$request_uri;
+    }
+
+    server {
+        listen 443 ssl;
+        server_name localhost;
+        
+        # SSL configuration
+        ssl_certificate /etc/nginx/ssl/tls.crt;
+        ssl_certificate_key /etc/nginx/ssl/tls.key;
+        ssl_protocols TLSv1.2 TLSv1.3;
+        ssl_ciphers HIGH:!aNULL:!MD5;
+        
         # Serve frontend static files
         location / {
             root /usr/share/nginx/html;

@@ -25,6 +25,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
 
     List<Alert> findBySeverityOrderByTimestampDesc(AlertSeverity severity);
 
+    List<Alert> findBySeverity(AlertSeverity severity, Pageable pageable);
+
     @Query("SELECT a FROM Alert a WHERE a.sourceIp = :ip OR a.destIp = :ip ORDER BY a.timestamp DESC")
     List<Alert> findByIpAddress(@Param("ip") String ip);
 
@@ -39,6 +41,8 @@ public interface AlertRepository extends JpaRepository<Alert, Long> {
     long countBySeverityAndTimestampAfter(AlertSeverity severity, LocalDateTime after);
 
     long countByTimestampAfter(LocalDateTime after);
+
+    List<Alert> findByTimestampAfter(LocalDateTime after);
 
     @Query("SELECT a.category, COUNT(a) FROM Alert a WHERE a.timestamp >= :since GROUP BY a.category ORDER BY COUNT(a) DESC")
     List<Object[]> countByCategory(@Param("since") LocalDateTime since);

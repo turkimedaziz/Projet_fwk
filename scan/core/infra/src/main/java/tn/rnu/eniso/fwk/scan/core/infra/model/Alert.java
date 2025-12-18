@@ -61,4 +61,132 @@ public class Alert {
 
     // Elasticsearch document ID for reference
     private String elasticsearchId;
+
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
+    }
+
+    public void setTimestamp(LocalDateTime timestamp) {
+        this.timestamp = timestamp;
+    }
+
+    public String getSourceIp() {
+        return sourceIp;
+    }
+
+    public void setSourceIp(String sourceIp) {
+        this.sourceIp = sourceIp;
+    }
+
+    public String getDestIp() {
+        return destIp;
+    }
+
+    public void setDestIp(String destIp) {
+        this.destIp = destIp;
+    }
+
+    public Integer getSourcePort() {
+        return sourcePort;
+    }
+
+    public void setSourcePort(Integer sourcePort) {
+        this.sourcePort = sourcePort;
+    }
+
+    public Integer getDestPort() {
+        return destPort;
+    }
+
+    public void setDestPort(Integer destPort) {
+        this.destPort = destPort;
+    }
+
+    public String getProtocol() {
+        return protocol;
+    }
+
+    public void setProtocol(String protocol) {
+        this.protocol = protocol;
+    }
+
+    public String getSignature() {
+        return signature;
+    }
+
+    public void setSignature(String signature) {
+        this.signature = signature;
+    }
+
+    public String getCategory() {
+        return category;
+    }
+
+    public void setCategory(String category) {
+        this.category = category;
+    }
+
+    public AlertSeverity getSeverity() {
+        return severity;
+    }
+
+    public void setSeverity(AlertSeverity severity) {
+        this.severity = severity;
+    }
+
+    public Long getSignatureId() {
+        return signatureId;
+    }
+
+    public void setSignatureId(Long signatureId) {
+        this.signatureId = signatureId;
+    }
+
+    public Long getGeneratorId() {
+        return generatorId;
+    }
+
+    public void setGeneratorId(Long generatorId) {
+        this.generatorId = generatorId;
+    }
+
+    public String getPayload() {
+        return payload;
+    }
+
+    public void setPayload(String payload) {
+        this.payload = payload;
+    }
+
+    public String getAction() {
+        return action;
+    }
+
+    public void setAction(String action) {
+        this.action = action;
+    }
+
+    public Device getDevice() {
+        return device;
+    }
+
+    public void setDevice(Device device) {
+        this.device = device;
+    }
+
+    public String getElasticsearchId() {
+        return elasticsearchId;
+    }
+
+    public void setElasticsearchId(String elasticsearchId) {
+        this.elasticsearchId = elasticsearchId;
+    }
 }

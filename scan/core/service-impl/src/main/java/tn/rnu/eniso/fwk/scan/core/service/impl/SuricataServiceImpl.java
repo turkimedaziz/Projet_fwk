@@ -3,10 +3,11 @@ package tn.rnu.eniso.fwk.scan.core.service.impl;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,15 +27,28 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class SuricataServiceImpl implements SuricataService {
+
+    private static final Logger log = LoggerFactory.getLogger(SuricataServiceImpl.class);
 
     private final AlertRepository alertRepository;
     private final DeviceRepository deviceRepository;
     private final ElasticsearchService elasticsearchService;
     private final ApplicationEventPublisher eventPublisher;
+    private final DailyThreatService dailyThreatService;
     private final ObjectMapper objectMapper = createObjectMapper();
+
+    public SuricataServiceImpl(AlertRepository alertRepository,
+            DeviceRepository deviceRepository,
+            ElasticsearchService elasticsearchService,
+            ApplicationEventPublisher eventPublisher,
+            DailyThreatService dailyThreatService) {
+        this.alertRepository = alertRepository;
+        this.deviceRepository = deviceRepository;
+        this.elasticsearchService = elasticsearchService;
+        this.eventPublisher = eventPublisher;
+        this.dailyThreatService = dailyThreatService;
+    }
 
     private static ObjectMapper createObjectMapper() {
         ObjectMapper mapper = new ObjectMapper();
@@ -44,10 +58,7 @@ public class SuricataServiceImpl implements SuricataService {
 
     @Override
     public List<Alert> getRecentAlerts(int limit) {
-        return alertRepository.findTop100ByOrderByTimestampDesc()
-                .stream()
-                .limit(limit)
-                .collect(Collectors.toList());
+        return alertRepository.findByOrderByTimestampDesc(PageRequest.of(0, limit)).getContent();
     }
 
     @Override
@@ -63,6 +74,11 @@ public class SuricataServiceImpl implements SuricataService {
     @Override
     public List<Alert> getAlertsBySeverity(AlertSeverity severity) {
         return alertRepository.findBySeverityOrderByTimestampDesc(severity);
+    }
+
+    @Override
+    public List<Alert> getAlertsBySeverity(AlertSeverity severity, int limit) {
+        return alertRepository.findBySeverity(severity, PageRequest.of(0, limit));
     }
 
     @Override
@@ -163,9 +179,17 @@ public class SuricataServiceImpl implements SuricataService {
             alert.setGeneratorId(alertNode.path("gid").asLong());
             alert.setAction(alertNode.path("action").asText());
 
-            // Determine severity based on signature or default to MEDIUM
+            // Determine severity based on signature or priority
             int severityLevel = alertNode.path("severity").asInt(2);
-            alert.setSeverity(mapSeverity(severityLevel));
+            String signature = alertNode.path("signature").asText();
+
+            // Override severity for specific signatures
+            if ("CUSTOM Rapid SYN Scan".equals(signature)
+                    || "CUSTOM Port Scan Detected - Low Ports".equals(signature)) {
+                alert.setSeverity(AlertSeverity.HIGH);
+            } else {
+                alert.setSeverity(mapSeverity(severityLevel));
+            }
 
             // Parse payload if available
             if (root.has("payload")) {
@@ -178,8 +202,8 @@ public class SuricataServiceImpl implements SuricataService {
 
             // Save to database
             Alert savedAlert = alertRepository.save(alert);
-            log.info("Saved alert: {} from {} to {}", savedAlert.getSignature(),
-                    savedAlert.getSourceIp(), savedAlert.getDestIp());
+            log.info("Saved alert: {} from {} to {} (Severity: {})", savedAlert.getSignature(),
+                    savedAlert.getSourceIp(), savedAlert.getDestIp(), savedAlert.getSeverity());
 
             // Index in Elasticsearch
             try {
@@ -196,6 +220,111 @@ public class SuricataServiceImpl implements SuricataService {
             eventPublisher.publishEvent(new AlertEvent(this, savedAlert));
             log.debug("Published AlertEvent for real-time broadcasting");
 
+            // Cache to Redis for AI analysis and update stats
+            dailyThreatService.cacheAlert(savedAlert);
+
+            // Check for SYN Flood: Track individual SYN packets
+            boolean isSynPacket = "CUSTOM SYN Packet Detected".equals(savedAlert.getSignature());
+            if (isSynPacket) {
+                // Increment the SYN flood counter for this source->dest pair
+                boolean isFlooding = dailyThreatService.isSynFlood(savedAlert.getSourceIp(), savedAlert.getDestIp());
+
+                if (isFlooding) {
+                    // Generate critical alert after 10 SYN packets
+                    String floodSignature = "Potential DDoS/Flooding: SYN Flood Detected";
+
+                    if (dailyThreatService.shouldGenerateCriticalAlert(savedAlert.getSourceIp(), floodSignature)) {
+                        Alert criticalAlert = new Alert();
+                        criticalAlert.setTimestamp(LocalDateTime.now());
+                        criticalAlert.setSourceIp(savedAlert.getSourceIp());
+                        criticalAlert.setDestIp(savedAlert.getDestIp());
+                        criticalAlert.setSourcePort(savedAlert.getSourcePort());
+                        criticalAlert.setDestPort(savedAlert.getDestPort());
+                        criticalAlert.setProtocol(savedAlert.getProtocol());
+                        criticalAlert.setSignature(floodSignature);
+                        criticalAlert.setCategory("Potential Denial of Service");
+                        criticalAlert.setSeverity(AlertSeverity.CRITICAL);
+                        criticalAlert.setAction("alert");
+
+                        // Save, Index, Publish
+                        Alert savedCritical = alertRepository.save(criticalAlert);
+
+                        try {
+                            String esId = elasticsearchService.indexAlert(savedCritical);
+                            if (esId != null) {
+                                savedCritical.setElasticsearchId(esId);
+                                alertRepository.save(savedCritical);
+                            }
+                        } catch (Exception e) {
+                            log.warn("Failed to index critical alert in Elasticsearch", e);
+                        }
+
+                        eventPublisher.publishEvent(new AlertEvent(this, savedCritical));
+                        dailyThreatService.cacheAlert(savedCritical);
+
+                        log.warn("Generated CRITICAL alert for SYN flooding from {} to {}",
+                                savedAlert.getSourceIp(), savedAlert.getDestIp());
+                    }
+                }
+            }
+
+            // Check for flooding/DDoS
+            // "CUSTOM Rapid SYN Scan" is already aggregated by Suricata (count 20), so we
+            // treat it as flooding immediately
+            boolean isSynScan = "CUSTOM Rapid SYN Scan".equals(savedAlert.getSignature());
+
+            // Also check for manual SYN flood detection (Source -> Dest > 10 packets)
+            boolean isManualSynFlood = false;
+            if (savedAlert.getProtocol() != null && "TCP".equalsIgnoreCase(savedAlert.getProtocol())) {
+                // We don't have direct access to flags here easily without parsing payload or
+                // flow,
+                // but we can infer from signature or just count all TCP from src->dest for now
+                // if signature is generic
+                // Ideally we should check flags, but for now let's rely on the fact that these
+                // are alerts.
+                // Actually, let's trust the DailyThreatService to count.
+                isManualSynFlood = dailyThreatService.isSynFlood(savedAlert.getSourceIp(), savedAlert.getDestIp());
+            }
+
+            if (isSynScan || isManualSynFlood || dailyThreatService.isFlooding(savedAlert)) {
+                String floodSignature = "Potential DDoS/Flooding: " + savedAlert.getSignature();
+                if (isManualSynFlood) {
+                    floodSignature = "Potential DDoS/Flooding: SYN Flood Detected";
+                }
+
+                if (dailyThreatService.shouldGenerateCriticalAlert(savedAlert.getSourceIp(), floodSignature)) {
+                    Alert criticalAlert = new Alert();
+                    criticalAlert.setTimestamp(LocalDateTime.now());
+                    criticalAlert.setSourceIp(savedAlert.getSourceIp());
+                    criticalAlert.setDestIp(savedAlert.getDestIp());
+                    criticalAlert.setSourcePort(savedAlert.getSourcePort());
+                    criticalAlert.setDestPort(savedAlert.getDestPort());
+                    criticalAlert.setProtocol(savedAlert.getProtocol());
+                    criticalAlert.setSignature(floodSignature);
+                    criticalAlert.setCategory("Potential Denial of Service");
+                    criticalAlert.setSeverity(AlertSeverity.CRITICAL);
+                    criticalAlert.setAction("alert");
+
+                    // Save, Index, Publish
+                    Alert savedCritical = alertRepository.save(criticalAlert);
+
+                    try {
+                        String esId = elasticsearchService.indexAlert(savedCritical);
+                        if (esId != null) {
+                            savedCritical.setElasticsearchId(esId);
+                            alertRepository.save(savedCritical);
+                        }
+                    } catch (Exception e) {
+                        log.warn("Failed to index critical alert in Elasticsearch", e);
+                    }
+
+                    eventPublisher.publishEvent(new AlertEvent(this, savedCritical));
+                    dailyThreatService.cacheAlert(savedCritical);
+
+                    log.warn("Generated CRITICAL alert for flooding: {}", floodSignature);
+                }
+            }
+
         } catch (Exception e) {
             log.error("Error processing EVE log: {}", jsonLog, e);
         }
@@ -208,11 +337,12 @@ public class SuricataServiceImpl implements SuricataService {
     }
 
     private AlertSeverity mapSeverity(int suricataSeverity) {
-        // Suricata severity: 1 = high, 2 = medium, 3 = low
+        // Suricata severity: 1 = high, 2 = medium, 3 = low, 4 = very low
         return switch (suricataSeverity) {
-            case 1 -> AlertSeverity.HIGH;
+            case 1 -> AlertSeverity.HIGH; // HIGH priority
             case 2 -> AlertSeverity.MEDIUM;
             case 3 -> AlertSeverity.LOW;
+            case 4 -> AlertSeverity.LOW;
             default -> AlertSeverity.MEDIUM;
         };
     }

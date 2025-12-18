@@ -1,13 +1,16 @@
 import React from 'react';
-import type { AlertStatistics } from '../types';
+import type { TodayStatistics } from '../services/api';
+import { AlertSeverity } from '../types';
 import './StatisticsCards.css';
 
 interface StatisticsCardsProps {
-    statistics: AlertStatistics | null;
+    statistics: TodayStatistics | null;
     loading?: boolean;
+    activeFilter: AlertSeverity | null;
+    onFilter: (severity: AlertSeverity | null) => void;
 }
 
-const StatisticsCards: React.FC<StatisticsCardsProps> = ({ statistics, loading }) => {
+const StatisticsCards: React.FC<StatisticsCardsProps> = ({ statistics, loading, activeFilter, onFilter }) => {
     if (loading || !statistics) {
         return (
             <div className="statistics-grid">
@@ -22,59 +25,58 @@ const StatisticsCards: React.FC<StatisticsCardsProps> = ({ statistics, loading }
 
     const stats = [
         {
-            label: 'Total Alerts',
+            label: 'Total Alerts (All Time)',
+            value: statistics.globalTotal,
+            color: '#007bff',
+            icon: '📉',
+            filter: null,
+        },
+        {
+            label: 'Today\'s Traffic',
             value: statistics.totalAlerts,
             color: '#6c757d',
             icon: '📊',
+            filter: null,
         },
         {
-            label: 'Critical',
+            label: 'Critical (Today)',
             value: statistics.criticalAlerts,
             color: '#dc3545',
             icon: '🔴',
+            filter: AlertSeverity.CRITICAL,
         },
         {
-            label: 'High',
+            label: 'High (Today)',
             value: statistics.highAlerts,
             color: '#fd7e14',
             icon: '🟠',
+            filter: AlertSeverity.HIGH,
         },
         {
-            label: 'Medium',
+            label: 'Medium (Today)',
             value: statistics.mediumAlerts,
             color: '#ffc107',
             icon: '🟡',
+            filter: AlertSeverity.MEDIUM,
         },
         {
-            label: 'Low',
+            label: 'Low (Today)',
             value: statistics.lowAlerts,
             color: '#28a745',
             icon: '🟢',
-        },
-        {
-            label: 'Last Hour',
-            value: statistics.alertsLastHour,
-            color: '#17a2b8',
-            icon: '⏱️',
-        },
-        {
-            label: 'Last 24h',
-            value: statistics.alertsLast24Hours,
-            color: '#6610f2',
-            icon: '📅',
-        },
-        {
-            label: 'Last 7 Days',
-            value: statistics.alertsLast7Days,
-            color: '#e83e8c',
-            icon: '📆',
+            filter: AlertSeverity.LOW,
         },
     ];
 
     return (
         <div className="statistics-grid">
             {stats.map((stat) => (
-                <div key={stat.label} className="stat-card" style={{ borderTopColor: stat.color }}>
+                <div
+                    key={stat.label}
+                    className={`stat-card ${activeFilter === stat.filter && stat.filter !== null ? 'active' : ''}`}
+                    style={{ borderTopColor: stat.color }}
+                    onClick={() => onFilter(stat.filter)}
+                >
                     <div className="stat-icon">{stat.icon}</div>
                     <div className="stat-content">
                         <div className="stat-value">{stat.value.toLocaleString()}</div>

@@ -36,6 +36,11 @@ spec:
           value: elasticsearch
         - name: ELASTICSEARCH_PORT
           value: "9200"
+        # Redis configuration for Spring Boot (spring.data.redis.*)
+        - name: SPRING_DATA_REDIS_HOST
+          value: redis
+        - name: SPRING_DATA_REDIS_PORT
+          value: "6379"
         - name: SURICATA_LOG_PATH
           value: /var/log/suricata/eve.json
         - name: SURICATA_LOG_MONITOR_ENABLED

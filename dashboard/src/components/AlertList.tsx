@@ -12,7 +12,8 @@ interface AlertListProps {
 const AlertList: React.FC<AlertListProps> = ({ alerts, loading, onAlertClick }) => {
     const [filter, setFilter] = useState<string>('all');
 
-    const filteredAlerts = alerts.filter((alert) => {
+    const safeAlerts = alerts || [];
+    const filteredAlerts = safeAlerts.filter((alert) => {
         if (filter === 'all') return true;
         return alert.severity === filter.toUpperCase();
     });

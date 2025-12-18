@@ -21,7 +21,11 @@ spec:
         securityContext:
           capabilities:
             add: ["NET_ADMIN", "NET_RAW", "SYS_NICE"]
+<<<<<<< HEAD
         command: ["suricata", "-c", "/etc/suricata-config/suricata.yaml", "-i", "wlp45s0", "-v"]
+=======
+        command: ["suricata", "-c", "/etc/suricata-config/suricata.yaml", "-i", "wlp45s0", "-v"]
+>>>>>>> origin/hedil
         env:
         - name: TZ
           value: "Africa/Tunis"

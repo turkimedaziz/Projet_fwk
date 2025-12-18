@@ -1,7 +1,5 @@
 package tn.rnu.eniso.fwk.scan.core.service.impl;
 
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.io.input.Tailer;
 import org.apache.commons.io.input.TailerListenerAdapter;
 import org.springframework.beans.factory.annotation.Value;
@@ -9,15 +7,18 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import tn.rnu.eniso.fwk.scan.core.service.api.SuricataService;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import java.io.File;
 
 @Service
-@Slf4j
-@RequiredArgsConstructor
 @ConditionalOnProperty(name = "suricata.log.monitor.enabled", havingValue = "true", matchIfMissing = false)
 public class SuricataLogMonitor {
+
+    private static final Logger log = LoggerFactory.getLogger(SuricataLogMonitor.class);
 
     @Value("${suricata.log.path:/var/log/suricata/eve.json}")
     private String logFilePath;
@@ -26,6 +27,10 @@ public class SuricataLogMonitor {
     private long monitorDelay;
 
     private final SuricataService suricataService;
+
+    public SuricataLogMonitor(SuricataService suricataService) {
+        this.suricataService = suricataService;
+    }
 
     private Tailer tailer;
 
@@ -63,9 +68,8 @@ public class SuricataLogMonitor {
         };
 
         // Create tailer that follows the file (like tail -f)
-        // false = read from beginning of file (process existing alerts)
         // true = read from end of file (only new alerts)
-        tailer = Tailer.create(logFile, listener, monitorDelay, false);
+        tailer = Tailer.create(logFile, listener, monitorDelay, true);
 
         log.info("Started monitoring Suricata log file: {}", logFilePath);
     }

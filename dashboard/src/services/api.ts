@@ -1,5 +1,15 @@
 import axios from 'axios';
-import type { Alert, AlertStatistics, AlertSeverity } from '../types';
+import type { Alert, AlertStatistics } from '../types';
+import { AlertSeverity } from '../types';
+
+export interface TodayStatistics {
+    globalTotal: number;
+    totalAlerts: number;
+    criticalAlerts: number;
+    highAlerts: number;
+    mediumAlerts: number;
+    lowAlerts: number;
+}
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
 
@@ -34,8 +44,10 @@ export const suricataApi = {
     },
 
     // Get alerts by severity
-    getAlertsBySeverity: async (severity: AlertSeverity): Promise<Alert[]> => {
-        const response = await api.get<Alert[]>(`/suricata/alerts/severity/${severity}`);
+    getAlertsBySeverity: async (severity: AlertSeverity, limit: number = 1000): Promise<Alert[]> => {
+        const response = await api.get<Alert[]>(`/suricata/alerts/severity/${severity}`, {
+            params: { limit },
+        });
         return response.data;
     },
 
@@ -50,6 +62,12 @@ export const suricataApi = {
         const response = await api.get<AlertStatistics>('/suricata/statistics', {
             params: since ? { since } : {},
         });
+        return response.data;
+    },
+
+    // Get today's statistics from Redis
+    getTodayStatistics: async (): Promise<TodayStatistics> => {
+        const response = await api.get<TodayStatistics>('/suricata/statistics/today');
         return response.data;
     },
 
@@ -68,6 +86,27 @@ export const suricataApi = {
 
         eventSource.onerror = (error) => {
             console.error('SSE connection error:', error);
+            if (onError) onError(error);
+        };
+
+        return eventSource;
+    },
+
+    // Create SSE connection for real-time statistics
+    createStatsStream: (onStats: (stats: TodayStatistics) => void, onError?: (error: Event) => void) => {
+        const eventSource = new EventSource(`${API_BASE_URL}/suricata/statistics/stream`);
+
+        eventSource.addEventListener('stats', (event) => {
+            try {
+                const stats = JSON.parse(event.data) as TodayStatistics;
+                onStats(stats);
+            } catch (error) {
+                console.error('Error parsing stats:', error);
+            }
+        });
+
+        eventSource.onerror = (error) => {
+            console.error('SSE stats connection error:', error);
             if (onError) onError(error);
         };
 
