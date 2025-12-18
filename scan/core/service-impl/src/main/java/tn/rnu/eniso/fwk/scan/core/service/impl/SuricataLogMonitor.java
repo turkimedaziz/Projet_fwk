@@ -68,9 +68,8 @@ public class SuricataLogMonitor {
         };
 
         // Create tailer that follows the file (like tail -f)
-        // false = read from beginning of file (process existing alerts)
         // true = read from end of file (only new alerts)
-        tailer = Tailer.create(logFile, listener, monitorDelay, false);
+        tailer = Tailer.create(logFile, listener, monitorDelay, true);
 
         log.info("Started monitoring Suricata log file: {}", logFilePath);
     }

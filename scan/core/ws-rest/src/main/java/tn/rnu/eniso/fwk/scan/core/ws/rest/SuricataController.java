@@ -26,6 +26,7 @@ public class SuricataController {
 
     private final SuricataService suricataService;
     private final DailyThreatService dailyThreatService;
+
     public SuricataController(SuricataService suricataService, DailyThreatService dailyThreatService) {
         this.suricataService = suricataService;
         this.dailyThreatService = dailyThreatService;
@@ -33,6 +34,8 @@ public class SuricataController {
 
     // Store SSE emitters for real-time alert streaming
     private final List<SseEmitter> emitters = new CopyOnWriteArrayList<>();
+    // Store SSE emitters for real-time statistics streaming
+    private final List<SseEmitter> statsEmitters = new CopyOnWriteArrayList<>();
 
     /**
      * Event listener for AlertEvent - broadcasts alerts to all connected SSE
@@ -41,6 +44,7 @@ public class SuricataController {
     @EventListener
     public void handleAlertEvent(AlertEvent event) {
         broadcastAlert(event.getAlert());
+        broadcastStatistics(dailyThreatService.getTodayStatistics());
     }
 
     @GetMapping("/alerts")
@@ -65,8 +69,10 @@ public class SuricataController {
     }
 
     @GetMapping("/alerts/severity/{severity}")
-    public ResponseEntity<List<Alert>> getAlertsBySeverity(@PathVariable AlertSeverity severity) {
-        List<Alert> alerts = suricataService.getAlertsBySeverity(severity);
+    public ResponseEntity<List<Alert>> getAlertsBySeverity(
+            @PathVariable AlertSeverity severity,
+            @RequestParam(defaultValue = "1000") int limit) {
+        List<Alert> alerts = suricataService.getAlertsBySeverity(severity, limit);
         return ResponseEntity.ok(alerts);
     }
 
@@ -114,6 +120,28 @@ public class SuricataController {
         return emitter;
     }
 
+    @GetMapping(value = "/statistics/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
+    public SseEmitter streamStatistics() {
+        SseEmitter emitter = new SseEmitter(Long.MAX_VALUE);
+
+        statsEmitters.add(emitter);
+
+        emitter.onCompletion(() -> statsEmitters.remove(emitter));
+        emitter.onTimeout(() -> statsEmitters.remove(emitter));
+        emitter.onError((e) -> statsEmitters.remove(emitter));
+
+        // Send initial stats
+        try {
+            emitter.send(SseEmitter.event()
+                    .name("stats")
+                    .data(dailyThreatService.getTodayStatistics()));
+        } catch (Exception e) {
+            statsEmitters.remove(emitter);
+        }
+
+        return emitter;
+    }
+
     /**
      * This method can be called by the log monitor to broadcast new alerts
      */
@@ -131,5 +159,21 @@ public class SuricataController {
         });
 
         emitters.removeAll(deadEmitters);
+    }
+
+    public void broadcastStatistics(DailyThreatService.TodayStatistics stats) {
+        List<SseEmitter> deadEmitters = new CopyOnWriteArrayList<>();
+
+        statsEmitters.forEach(emitter -> {
+            try {
+                emitter.send(SseEmitter.event()
+                        .name("stats")
+                        .data(stats));
+            } catch (Exception e) {
+                deadEmitters.add(emitter);
+            }
+        });
+
+        statsEmitters.removeAll(deadEmitters);
     }
 }

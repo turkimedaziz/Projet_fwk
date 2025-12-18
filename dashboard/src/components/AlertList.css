@@ -1,23 +1,30 @@
 .alert-list {
     background: var(--card-bg);
     border: 1px solid var(--border-color);
-    border-radius: 8px;
+    border-radius: 16px;
     padding: 24px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    display: flex;
+    flex-direction: column;
+    height: 100%;
 }
 
 .alert-list-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
+    margin-bottom: 24px;
     flex-wrap: wrap;
     gap: 16px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border-color);
 }
 
 .alert-list-header h2 {
     margin: 0;
     color: var(--text-primary);
-    font-size: 1.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
 }
 
 .filter-buttons {
@@ -27,85 +34,73 @@
 }
 
 .filter-buttons button {
-    padding: 6px 16px;
+    padding: 6px 14px;
     border: 1px solid var(--border-color);
-    background: var(--card-bg);
-    color: var(--text-primary);
+    background: transparent;
+    color: var(--text-secondary);
     border-radius: 20px;
     cursor: pointer;
-    font-size: 0.875rem;
+    font-size: 0.85rem;
     font-weight: 500;
     transition: all 0.2s ease;
 }
 
 .filter-buttons button:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    background: var(--bg-primary);
+    color: var(--text-primary);
 }
 
 .filter-buttons button.active {
-    font-weight: 700;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    background: var(--text-primary);
+    color: var(--bg-secondary);
+    border-color: var(--text-primary);
 }
 
-.filter-buttons button.severity-critical {
-    border-color: #dc3545;
-    color: #dc3545;
-}
-
+/* Severity specific active states */
 .filter-buttons button.severity-critical.active {
     background: #dc3545;
+    border-color: #dc3545;
     color: white;
-}
-
-.filter-buttons button.severity-high {
-    border-color: #fd7e14;
-    color: #fd7e14;
 }
 
 .filter-buttons button.severity-high.active {
     background: #fd7e14;
+    border-color: #fd7e14;
     color: white;
-}
-
-.filter-buttons button.severity-medium {
-    border-color: #ffc107;
-    color: #ffc107;
 }
 
 .filter-buttons button.severity-medium.active {
     background: #ffc107;
+    border-color: #ffc107;
     color: #212529;
-}
-
-.filter-buttons button.severity-low {
-    border-color: #28a745;
-    color: #28a745;
 }
 
 .filter-buttons button.severity-low.active {
     background: #28a745;
+    border-color: #28a745;
     color: white;
 }
 
 .alerts-container {
-    max-height: 600px;
+    flex: 1;
     overflow-y: auto;
     padding-right: 8px;
+    min-height: 400px;
+    max-height: 600px;
 }
 
+/* Scrollbar styling */
 .alerts-container::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
 }
 
 .alerts-container::-webkit-scrollbar-track {
-    background: var(--bg-primary);
-    border-radius: 4px;
+    background: transparent;
 }
 
 .alerts-container::-webkit-scrollbar-thumb {
     background: var(--border-color);
-    border-radius: 4px;
+    border-radius: 10px;
 }
 
 .alerts-container::-webkit-scrollbar-thumb:hover {
@@ -114,17 +109,20 @@
 
 .no-alerts {
     text-align: center;
-    padding: 60px 20px;
+    padding: 80px 20px;
     color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
 }
 
 .no-alerts p {
-    font-size: 1.5rem;
+    font-size: 1.25rem;
     margin: 0 0 8px 0;
-}
-
-.no-alerts small {
-    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary);
 }
 
 .loading-container {
@@ -132,14 +130,15 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 60px 20px;
+    padding: 80px 20px;
     color: var(--text-secondary);
+    height: 100%;
 }
 
 .spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid var(--border-color);
+    width: 32px;
+    height: 32px;
+    border: 3px solid var(--border-color);
     border-top-color: var(--primary-color);
     border-radius: 50%;
     animation: spin 1s linear infinite;
@@ -160,6 +159,7 @@
 
     .filter-buttons {
         width: 100%;
-        justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: 4px;
     }
 }

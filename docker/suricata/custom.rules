@@ -17,8 +17,12 @@ alert http any any -> any any (msg:"CUSTOM Suspicious User-Agent - Nikto"; flow:
 alert http any any -> any any (msg:"CUSTOM Suspicious User-Agent - Nmap"; flow:established,to_server; content:"User-Agent|3a| Nmap"; http_header; nocase; classtype:web-application-attack; sid:1000009; rev:1;)
 
 # Port Scanning Detection
-alert tcp any any -> any [1:1024] (msg:"CUSTOM Port Scan Detected - Low Ports"; flags:S; threshold:type both, track by_src, count 10, seconds 60; classtype:attempted-recon; sid:1000010; rev:1;)
-alert tcp any any -> any any (msg:"CUSTOM Rapid SYN Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; classtype:attempted-recon; sid:1000011; rev:1;)
+alert tcp any any -> any [1:1024] (msg:"CUSTOM Port Scan Detected - Low Ports"; flags:S; threshold:type both, track by_src, count 10, seconds 60; classtype:attempted-recon; priority:2; sid:1000010; rev:1;)
+alert tcp any any -> any any (msg:"CUSTOM Rapid SYN Scan"; flags:S; threshold:type both, track by_src, count 20, seconds 10; classtype:attempted-recon; priority:1; sid:1000011; rev:1;)
+
+# Individual SYN Packet Tracking (for manual flood detection)
+# This rule captures EVERY SYN packet - will generate many alerts!
+alert tcp any any -> any any (msg:"CUSTOM SYN Packet Detected"; flags:S,12; classtype:misc-activity; priority:4; sid:1000022; rev:2;)
 
 # Command Injection
 alert http any any -> any any (msg:"CUSTOM Command Injection - Pipe Character"; flow:established,to_server; content:"|7c|"; http_uri; content:"cat"; http_uri; nocase; distance:0; classtype:web-application-attack; sid:1000012; rev:1;)

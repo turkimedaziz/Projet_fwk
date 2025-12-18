@@ -50,12 +50,23 @@ body {
 .app-header {
   background: var(--card-bg);
   border-bottom: 1px solid var(--border-color);
-  padding: 24px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  padding: 16px 24px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  backdrop-filter: blur(8px);
+  background: rgba(255, 255, 255, 0.9);
+}
+
+@media (prefers-color-scheme: dark) {
+  .app-header {
+    background: rgba(45, 55, 72, 0.9);
+  }
 }
 
 .header-content {
-  max-width: 1400px;
+  max-width: 1600px;
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
@@ -126,12 +137,15 @@ body {
   font-size: 0.875rem;
 }
 
-.app-main {
+.main-content {
   flex: 1;
-  max-width: 1400px;
+  max-width: 1600px;
   width: 100%;
   margin: 0 auto;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
 }
 
 .statistics-section {
@@ -170,7 +184,7 @@ body {
     font-size: 1.5rem;
   }
 
-  .app-main {
+  .main-content {
     padding: 16px;
   }
 }

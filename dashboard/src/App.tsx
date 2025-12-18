@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import StatisticsCards from './components/StatisticsCards';
 import AlertList from './components/AlertList';
-import NetworkScan from './components/NetworkScan';
+import Header from './components/Header';
+import ChartsSection from './components/ChartsSection';
 import { suricataApi, type TodayStatistics } from './services/api';
+import { AlertSeverity } from './types';
 import type { Alert } from './types';
 import './App.css';
 
@@ -11,109 +13,92 @@ function App() {
   const [statistics, setStatistics] = useState<TodayStatistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
-  const [lastUpdate, setLastUpdate] = useState<Date>(new Date());
+  const [activeFilter, setActiveFilter] = useState<AlertSeverity | null>(null);
 
-  // Fetch initial data
   useEffect(() => {
     const fetchData = async () => {
       try {
-        setLoading(true);
-        const [alertsData, statsData] = await Promise.all([
-          suricataApi.getRecentAlerts(50),
-          suricataApi.getTodayStatistics(),
+        const [recentAlerts, stats] = await Promise.all([
+          suricataApi.getRecentAlerts(1000),
+          suricataApi.getTodayStatistics()
         ]);
-        setAlerts(alertsData);
-        setStatistics(statsData);
-        setLastUpdate(new Date());
+        setAlerts(recentAlerts);
+        setStatistics(stats);
+        setConnected(true);
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching initial data:', error);
+        setConnected(false);
       } finally {
         setLoading(false);
       }
     };
 
     fetchData();
-  }, []);
 
-  // Setup SSE for real-time alerts
-  useEffect(() => {
-    const eventSource = suricataApi.createAlertStream(
-      (newAlert) => {
-        setAlerts((prev) => [newAlert, ...prev].slice(0, 50));
-        setLastUpdate(new Date());
-        setConnected(true);
+    // Setup SSE for alerts
+    const alertSource = suricataApi.createAlertStream(
+      (alert) => {
+        setAlerts(prev => {
+          // Filter incoming alerts based on active filter
+          if (activeFilter && alert.severity !== activeFilter) {
+            return prev;
+          }
+          return [alert, ...prev].slice(0, 1000);
+        });
       },
-      (error) => {
-        console.error('SSE error:', error);
-        setConnected(false);
-      }
+      () => setConnected(false)
     );
 
-    setConnected(true);
+    // Setup SSE for statistics
+    const statsSource = suricataApi.createStatsStream(
+      (stats) => setStatistics(stats),
+      () => setConnected(false)
+    );
 
     return () => {
-      eventSource.close();
-      setConnected(false);
+      alertSource.close();
+      statsSource.close();
     };
-  }, []);
+  }, [activeFilter]); // Re-run when filter changes
 
-  // Refresh statistics periodically
-  useEffect(() => {
-    const interval = setInterval(async () => {
-      try {
-        const statsData = await suricataApi.getTodayStatistics();
-        setStatistics(statsData);
-      } catch (error) {
-        console.error('Error refreshing statistics:', error);
+  const handleFilterChange = async (severity: AlertSeverity | null) => {
+    setActiveFilter(severity);
+    setLoading(true);
+    try {
+      if (severity) {
+        // Pass limit=1000 to prevent crash
+        const filteredAlerts = await suricataApi.getAlertsBySeverity(severity, 1000);
+        setAlerts(filteredAlerts);
+      } else {
+        const recentAlerts = await suricataApi.getRecentAlerts(1000);
+        setAlerts(recentAlerts);
       }
-    }, 30000); // Refresh every 30 seconds
-
-    return () => clearInterval(interval);
-  }, []);
-
-  const handleAlertClick = (alert: Alert) => {
-    console.log('Alert clicked:', alert);
-    // You can implement a modal or detail view here
+    } catch (error) {
+      console.error('Error filtering alerts:', error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <div className="header-content">
-          <div className="header-left">
-            <h1>🛡️ Network Security Monitor</h1>
-            <p className="subtitle">Real-time Intrusion Detection System</p>
-          </div>
-          <div className="header-right">
-            <div className={`connection-status ${connected ? 'connected' : 'disconnected'}`}>
-              <span className="status-dot"></span>
-              {connected ? 'Live' : 'Disconnected'}
-            </div>
-            <div className="last-update">
-              Last update: {lastUpdate.toLocaleTimeString()}
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="app-container">
+      <Header connected={connected} />
 
-      <main className="app-main">
-        <section className="statistics-section">
-          <StatisticsCards statistics={statistics} loading={loading} />
-          <NetworkScan />
-        </section>
+      <main className="main-content">
+        <StatisticsCards
+          statistics={statistics}
+          loading={loading}
+          onFilter={handleFilterChange}
+          activeFilter={activeFilter}
+        />
 
-        <section className="alerts-section">
-          <AlertList
-            alerts={alerts}
-            loading={loading}
-            onAlertClick={handleAlertClick}
-          />
-        </section>
+        <ChartsSection
+          statistics={statistics}
+          loading={loading}
+        />
+
+        <AlertList alerts={alerts} loading={loading} />
       </main>
-
-      <footer className="app-footer">
-        <p>Powered by Suricata IDS • Built with React + Vite + TypeScript</p>
-      </footer>
     </div>
   );
 }

@@ -1,6 +1,5 @@
 package tn.rnu.eniso.fwk.scan.core.service.impl;
 
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -24,6 +23,7 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     private final HuggingFaceClient huggingFaceClient;
     private final AlertRepository alertRepository;
+
     public AiAssistantServiceImpl(HuggingFaceClient huggingFaceClient, AlertRepository alertRepository) {
         this.huggingFaceClient = huggingFaceClient;
         this.alertRepository = alertRepository;
@@ -75,14 +75,29 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
             // Build focused remediation prompt
             String alertDetails = formatAlertDetails(alert);
+
+            String specificInstructions = "";
+            if (alert.getSignature() != null && (alert.getSignature().contains("DDoS")
+                    || alert.getSignature().contains("Flooding") || alert.getSignature().contains("SYN"))) {
+                specificInstructions = """
+                        CRITICAL: This appears to be a Denial of Service attack.
+                        You MUST provide:
+                        1. Immediate blocking commands using 'iptables' to drop traffic from the source IP.
+                        2. Commands to verify the attack (e.g., netstat, tcpdump).
+                        3. Rate limiting configuration examples.
+                        """;
+            }
+
             String prompt = String.format("""
                     You are a cybersecurity expert. Provide ONLY specific remediation steps for this security alert.
+
+                    %s
 
                     Alert: %s
 
                     Provide 5-7 concrete, actionable steps to remediate this security issue.
                     Format as a numbered list. Be specific and technical.
-                    """, alertDetails);
+                    """, specificInstructions, alertDetails);
 
             String remediation = huggingFaceClient.generateResponse(prompt);
 

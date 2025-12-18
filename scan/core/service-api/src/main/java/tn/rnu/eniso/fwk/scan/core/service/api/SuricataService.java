@@ -32,6 +32,11 @@ public interface SuricataService {
     List<Alert> getAlertsBySeverity(AlertSeverity severity);
 
     /**
+     * Get alerts by severity level with limit
+     */
+    List<Alert> getAlertsBySeverity(AlertSeverity severity, int limit);
+
+    /**
      * Get alerts related to a specific IP address
      */
     List<Alert> getAlertsByIp(String ipAddress);
