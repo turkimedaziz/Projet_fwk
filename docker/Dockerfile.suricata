@@ -27,7 +27,7 @@ EXPOSE 8000
 WORKDIR /var/log/suricata
 
 # Environment variable for network interface (default: wlp45s0)
-ENV NETWORK_INTERFACE=wlp45s0
+ENV NETWORK_INTERFACE=wlo1
 
 # Run Suricata with configurable interface
 CMD suricata -c /etc/suricata/suricata.yaml -i ${NETWORK_INTERFACE} -v

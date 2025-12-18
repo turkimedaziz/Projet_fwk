@@ -91,19 +91,19 @@ echo "Rendered suricata config: $RENDERED"
 
 if [ "$APPLY" -eq 1 ]; then
   echo "Applying ConfigMap to cluster and restarting deployment..."
-  /usr/local/bin/kubectl create configmap suricata-config -n "$NAMESPACE" \
-    --from-file=suricata.yaml="$RENDERED" --dry-run=client -o yaml | /usr/local/bin/kubectl apply -f -
+  sudo /usr/local/bin/k3s kubectl create configmap suricata-config -n "$NAMESPACE" \
+    --from-file=suricata.yaml="$RENDERED" --dry-run=client -o yaml | sudo /usr/local/bin/k3s kubectl apply -f -
   # ensure rules configmap updated from repo rules
   if [ -f docker/suricata/custom.rules ]; then
-    /usr/local/bin/kubectl create configmap suricata-rules -n "$NAMESPACE" \
-      --from-file=custom.rules=docker/suricata/custom.rules --dry-run=client -o yaml | /usr/local/bin/kubectl apply -f -
+    sudo /usr/local/bin/k3s kubectl create configmap suricata-rules -n "$NAMESPACE" \
+      --from-file=custom.rules=docker/suricata/custom.rules --dry-run=client -o yaml | sudo /usr/local/bin/k3s kubectl apply -f -
   fi
-  /usr/local/bin/kubectl rollout restart deployment/suricata -n "$NAMESPACE"
-  echo "Applied and restarted. Check: /usr/local/bin/kubectl get pods -n $NAMESPACE"
+  sudo /usr/local/bin/k3s kubectl rollout restart deployment/suricata -n "$NAMESPACE"
+  echo "Applied and restarted. Check: sudo /usr/local/bin/k3s kubectl get pods -n $NAMESPACE"
 else
   echo "Local-only mode (no cluster apply). To apply run:"
-  echo "  /usr/local/bin/kubectl create configmap suricata-config -n $NAMESPACE --from-file=suricata.yaml=$RENDERED --dry-run=client -o yaml | /usr/local/bin/kubectl apply -f -"
-  echo "  /usr/local/bin/kubectl apply -f $SURICATA_DEPLOY_YAML && /usr/local/bin/kubectl rollout restart deployment/suricata -n $NAMESPACE"
+  echo "  sudo /usr/local/bin/k3s kubectl create configmap suricata-config -n $NAMESPACE --from-file=suricata.yaml=$RENDERED --dry-run=client -o yaml | sudo /usr/local/bin/k3s kubectl apply -f -"
+  echo "  sudo /usr/local/bin/k3s kubectl apply -f $SURICATA_DEPLOY_YAML && sudo /usr/local/bin/k3s kubectl rollout restart deployment/suricata -n $NAMESPACE"
 fi
 
 echo "Done. Suricata files updated locally: interface=${IFACE}, HOME_NET=${NET}"

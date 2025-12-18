@@ -2,8 +2,7 @@ package tn.rnu.eniso.fwk.scan.core.service.impl;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
@@ -15,11 +14,12 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 /**
+ * Client for interacting with Hugging Face Inference API.
  */
+@Slf4j
 @Component
 public class HuggingFaceClient {
 
-    private static final Logger log = LoggerFactory.getLogger(HuggingFaceClient.class);
     private final WebClient webClient;
     private final String apiToken;
     private final String apiUrl;
@@ -202,93 +202,91 @@ public class HuggingFaceClient {
         boolean isWebAttack = promptLower.contains("http") || promptLower.contains("web")
                 || destPort.equals("80") || destPort.equals("443") || destPort.equals("8080");
 
-        response.append("### 🛡️ AI Security Analysis\\n\\n");
+        response.append("### 🛡️ AI Security Analysis\n\n");
 
         // DDoS/Flood attacks - HIGHEST PRIORITY
         if (isDdos) {
-            response.append(
-                    "**🚨 CRITICAL THREAT**: Distributed Denial of Service (DDoS) / Network Flood Attack\\n\\n");
+            response.append("**🚨 CRITICAL THREAT**: Distributed Denial of Service (DDoS) / Network Flood Attack\n\n");
             response.append("**Attack Vector**: Massive traffic flood detected from **" + sourceIp + "** targeting **"
                     + destIp + "**");
             if (!destPort.equals("Unknown") && !destPort.equals("N/A")) {
                 response.append(" on port **" + destPort + "**");
             }
-            response.append(".\\n\\n");
+            response.append(".\n\n");
 
-            response.append("**Attack Characteristics**:\\n");
+            response.append("**Attack Characteristics**:\n");
             response.append(
-                    "* **Source**: " + sourceIp + (sourcePort.equals("Unknown") ? "" : ":" + sourcePort) + "\\n");
-            response.append("* **Target**: " + destIp + (destPort.equals("Unknown") ? "" : ":" + destPort) + "\\n");
-            response.append("* **Protocol**: " + protocol + "\\n");
-            response.append("* **Signature**: " + signature + "\\n");
-            response.append("* **Detection Time**: " + timestamp + "\\n\\n");
+                    "* **Source**: " + sourceIp + (sourcePort.equals("Unknown") ? "" : ":" + sourcePort) + "\n");
+            response.append("* **Target**: " + destIp + (destPort.equals("Unknown") ? "" : ":" + destPort) + "\n");
+            response.append("* **Protocol**: " + protocol + "\n");
+            response.append("* **Signature**: " + signature + "\n");
+            response.append("* **Detection Time**: " + timestamp + "\n\n");
 
             response.append("This appears to be a **" + protocol + " flood attack** ");
             if (isPortScan) {
                 response.append(
                         "combined with aggressive port scanning (likely **nmap** with aggressive timing options like `-T4` or `-T5`). ");
                 response.append(
-                        "The attacker is simultaneously mapping your network AND attempting to overwhelm it.\\n\\n");
+                        "The attacker is simultaneously mapping your network AND attempting to overwhelm it.\n\n");
             } else {
                 response.append(
-                        "designed to exhaust system resources (CPU, RAM, bandwidth) and cause service disruption.\\n\\n");
+                        "designed to exhaust system resources (CPU, RAM, bandwidth) and cause service disruption.\n\n");
             }
 
-            response.append("### ⚠️ Impact Assessment\\n");
-            response.append("* **Severity**: **" + severity.toUpperCase() + "** - CRITICAL\\n");
+            response.append("### ⚠️ Impact Assessment\n");
+            response.append("* **Severity**: **" + severity.toUpperCase() + "** - CRITICAL\n");
             response.append(
-                    "* **Immediate Risk**: Complete service unavailability, system crash, network saturation\\n");
-            response.append("* **Target System**: " + destIp + " is under active attack\\n");
-            response.append("* **Business Impact**: Service downtime, potential revenue loss, reputation damage\\n\\n");
+                    "* **Immediate Risk**: Complete service unavailability, system crash, network saturation\n");
+            response.append("* **Target System**: " + destIp + " is under active attack\n");
+            response.append("* **Business Impact**: Service downtime, potential revenue loss, reputation damage\n\n");
 
-            response.append("### 🛠️ IMMEDIATE Remediation Steps\\n");
-            response.append("1. **URGENT - Block Attack Source**: Execute immediately:\\n");
-            response.append("   ```bash\\n");
-            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -j DROP\\n");
-            response.append("   sudo iptables-save > /etc/iptables/rules.v4\\n");
-            response.append("   ```\\n");
-            response.append("2. **Rate Limiting**: Implement aggressive rate limiting on " + protocol + " traffic:\\n");
-            response.append("   ```bash\\n");
+            response.append("### 🛠️ IMMEDIATE Remediation Steps\n");
+            response.append("1. **URGENT - Block Attack Source**: Execute immediately:\n");
+            response.append("   ```bash\n");
+            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -j DROP\n");
+            response.append("   sudo iptables-save > /etc/iptables/rules.v4\n");
+            response.append("   ```\n");
+            response.append("2. **Rate Limiting**: Implement aggressive rate limiting on " + protocol + " traffic:\n");
+            response.append("   ```bash\n");
             response.append("   sudo iptables -A INPUT -p " + protocol.toLowerCase()
-                    + " -m limit --limit 10/s --limit-burst 20 -j ACCEPT\\n");
-            response.append("   sudo iptables -A INPUT -p " + protocol.toLowerCase() + " -j DROP\\n");
-            response.append("   ```\\n");
-            response.append("3. **Enable SYN Cookies** (if TCP flood):\\n");
-            response.append("   ```bash\\n");
-            response.append("   sudo sysctl -w net.ipv4.tcp_syncookies=1\\n");
-            response.append("   ```\\n");
-            response.append("4. **Contact ISP/DDoS Mitigation Service**: If traffic volume is saturating your link\\n");
-            response.append("5. **Monitor System Resources**: Watch CPU, memory, and network utilization\\n\\n");
+                    + " -m limit --limit 10/s --limit-burst 20 -j ACCEPT\n");
+            response.append("   sudo iptables -A INPUT -p " + protocol.toLowerCase() + " -j DROP\n");
+            response.append("   ```\n");
+            response.append("3. **Enable SYN Cookies** (if TCP flood):\n");
+            response.append("   ```bash\n");
+            response.append("   sudo sysctl -w net.ipv4.tcp_syncookies=1\n");
+            response.append("   ```\n");
+            response.append("4. **Contact ISP/DDoS Mitigation Service**: If traffic volume is saturating your link\n");
+            response.append("5. **Monitor System Resources**: Watch CPU, memory, and network utilization\n\n");
 
-            response.append("### 🔍 Investigation & Forensics\\n");
-            response.append("```bash\\n");
-            response.append("# Monitor real-time attack traffic\\n");
-            response.append("sudo tcpdump -i any -n src " + sourceIp + " | head -100\\n\\n");
-            response.append("# Count packets from attacker\\n");
-            response.append("sudo tcpdump -i any -n src " + sourceIp + " -c 1000 | wc -l\\n\\n");
-            response.append("# Check current connection states\\n");
-            response.append("netstat -an | grep " + sourceIp + " | wc -l\\n\\n");
-            response.append("# Monitor system load\\n");
-            response.append("top -b -n 1 | head -20\\n");
-            response.append("```\\n");
+            response.append("### 🔍 Investigation & Forensics\n");
+            response.append("```bash\n");
+            response.append("# Monitor real-time attack traffic\n");
+            response.append("sudo tcpdump -i any -n src " + sourceIp + " | head -100\n\n");
+            response.append("# Count packets from attacker\n");
+            response.append("sudo tcpdump -i any -n src " + sourceIp + " -c 1000 | wc -l\n\n");
+            response.append("# Check current connection states\n");
+            response.append("netstat -an | grep " + sourceIp + " | wc -l\n\n");
+            response.append("# Monitor system load\n");
+            response.append("top -b -n 1 | head -20\n");
+            response.append("```\n");
             response.append(
-                    "\\n**Note**: If you're experiencing an nmap flood, the attacker is using aggressive scan timing. ");
-            response.append(
-                    "Consider implementing port knocking or moving critical services to non-standard ports.\\n");
+                    "\n**Note**: If you're experiencing an nmap flood, the attacker is using aggressive scan timing. ");
+            response.append("Consider implementing port knocking or moving critical services to non-standard ports.\n");
 
         } else if (isPortScan) {
             // Port Scan - personalized based on protocol and ports
-            response.append("**Threat Detected**: Network Reconnaissance - Port Scanning Activity\\n\\n");
-            response.append("**Scan Details**:\\n");
-            response.append("* **Attacker**: " + sourceIp + "\\n");
+            response.append("**Threat Detected**: Network Reconnaissance - Port Scanning Activity\n\n");
+            response.append("**Scan Details**:\n");
+            response.append("* **Attacker**: " + sourceIp + "\n");
             response.append("* **Target**: " + destIp);
             if (!destPort.equals("Unknown") && !destPort.equals("N/A")) {
                 response.append(" (Port " + destPort + ")");
             }
-            response.append("\\n");
-            response.append("* **Protocol**: " + protocol + "\\n");
-            response.append("* **Scan Type**: " + signature + "\\n");
-            response.append("* **Time**: " + timestamp + "\\n\\n");
+            response.append("\n");
+            response.append("* **Protocol**: " + protocol + "\n");
+            response.append("* **Scan Type**: " + signature + "\n");
+            response.append("* **Time**: " + timestamp + "\n\n");
 
             response.append("The attacker **" + sourceIp + "** is systematically probing ");
             if (!destPort.equals("Unknown") && !destPort.equals("N/A")) {
@@ -306,203 +304,202 @@ public class HuggingFaceClient {
             } else {
                 response.append("multiple ports ");
             }
-            response.append("on **" + destIp + "** to identify running services and potential vulnerabilities.\\n\\n");
+            response.append("on **" + destIp + "** to identify running services and potential vulnerabilities.\n\n");
 
-            response.append("### ⚠️ Impact Assessment\\n");
-            response.append("* **Severity**: " + severity + "\\n");
-            response.append("* **Risk Level**: This is reconnaissance - typically precedes a targeted attack\\n");
-            response.append("* **Exposed System**: " + destIp + " is being mapped\\n");
-            response.append("* **Next Expected**: Exploitation attempts on discovered open ports\\n\\n");
+            response.append("### ⚠️ Impact Assessment\n");
+            response.append("* **Severity**: " + severity + "\n");
+            response.append("* **Risk Level**: This is reconnaissance - typically precedes a targeted attack\n");
+            response.append("* **Exposed System**: " + destIp + " is being mapped\n");
+            response.append("* **Next Expected**: Exploitation attempts on discovered open ports\n\n");
 
-            response.append("### 🛠️ Remediation Steps\\n");
-            response.append("1. **Block Scanning Source**:\\n");
-            response.append("   ```bash\\n");
-            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -j DROP\\n");
-            response.append("   ```\\n");
+            response.append("### 🛠️ Remediation Steps\n");
+            response.append("1. **Block Scanning Source**:\n");
+            response.append("   ```bash\n");
+            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -j DROP\n");
+            response.append("   ```\n");
             response.append(
-                    "2. **Review Firewall Rules**: Verify only essential ports are exposed on **" + destIp + "**\\n");
-            response.append("3. **Enable IPS/IDS**: Configure Suricata to automatically drop scan packets\\n");
+                    "2. **Review Firewall Rules**: Verify only essential ports are exposed on **" + destIp + "**\n");
+            response.append("3. **Enable IPS/IDS**: Configure Suricata to automatically drop scan packets\n");
             response.append("4. **Port Hardening**: ");
             if (!destPort.equals("Unknown") && !destPort.equals("N/A")) {
                 response.append(
-                        "Consider moving service on port " + destPort + " to a non-standard port or behind VPN\\n");
+                        "Consider moving service on port " + destPort + " to a non-standard port or behind VPN\n");
             } else {
-                response.append("Move critical services to non-standard ports or behind VPN\\n");
+                response.append("Move critical services to non-standard ports or behind VPN\n");
             }
             response.append(
-                    "5. **Monitor for Follow-up**: Watch for exploitation attempts in the next 24-48 hours\\n\\n");
+                    "5. **Monitor for Follow-up**: Watch for exploitation attempts in the next 24-48 hours\n\n");
 
-            response.append("### 🔍 Investigation\\n");
-            response.append("```bash\\n");
-            response.append("# Check what ports are actually open on target\\n");
-            response.append("sudo netstat -tulpn | grep LISTEN\\n\\n");
-            response.append("# Review recent connections from scanner\\n");
-            response.append("sudo grep " + sourceIp + " /var/log/syslog | tail -50\\n\\n");
-            response.append("# Check if scanner is still active\\n");
-            response.append("sudo netstat -an | grep " + sourceIp + "\\n");
-            response.append("```\\n");
+            response.append("### 🔍 Investigation\n");
+            response.append("```bash\n");
+            response.append("# Check what ports are actually open on target\n");
+            response.append("sudo netstat -tulpn | grep LISTEN\n\n");
+            response.append("# Review recent connections from scanner\n");
+            response.append("sudo grep " + sourceIp + " /var/log/syslog | tail -50\n\n");
+            response.append("# Check if scanner is still active\n");
+            response.append("sudo netstat -an | grep " + sourceIp + "\n");
+            response.append("```\n");
 
         } else if (isSqlInjection) {
-            response.append("**🔴 CRITICAL**: SQL Injection Attack Attempt\\n\\n");
-            response.append("**Attack Details**:\\n");
-            response.append("* **Attacker**: " + sourceIp + "\\n");
-            response.append("* **Target Web Server**: " + destIp + ":" + destPort + "\\n");
-            response.append("* **Attack Signature**: " + signature + "\\n");
-            response.append("* **Time**: " + timestamp + "\\n\\n");
+            response.append("**🔴 CRITICAL**: SQL Injection Attack Attempt\n\n");
+            response.append("**Attack Details**:\n");
+            response.append("* **Attacker**: " + sourceIp + "\n");
+            response.append("* **Target Web Server**: " + destIp + ":" + destPort + "\n");
+            response.append("* **Attack Signature**: " + signature + "\n");
+            response.append("* **Time**: " + timestamp + "\n\n");
 
             response.append("Malicious SQL syntax detected in HTTP requests from **" + sourceIp
                     + "** targeting your web application on **" + destIp + "**. ");
             response.append(
-                    "The attacker is attempting to manipulate database queries to extract sensitive data or bypass authentication.\\n\\n");
+                    "The attacker is attempting to manipulate database queries to extract sensitive data or bypass authentication.\n\n");
 
-            response.append("### ⚠️ Impact Assessment\\n");
-            response.append("* **Severity**: **CRITICAL**\\n");
+            response.append("### ⚠️ Impact Assessment\n");
+            response.append("* **Severity**: **CRITICAL**\n");
+            response.append("* **Risk**: Complete database compromise, data exfiltration, unauthorized admin access\n");
+            response.append("* **Affected System**: Web application on " + destIp + ":" + destPort + "\n");
+            response.append("* **Data at Risk**: User credentials, personal information, business data\n\n");
+
+            response.append("### 🛠️ URGENT Remediation\n");
+            response.append("1. **Immediate Block**:\n");
+            response.append("   ```bash\n");
+            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -p tcp --dport " + destPort + " -j DROP\n");
+            response.append("   ```\n");
             response.append(
-                    "* **Risk**: Complete database compromise, data exfiltration, unauthorized admin access\\n");
-            response.append("* **Affected System**: Web application on " + destIp + ":" + destPort + "\\n");
-            response.append("* **Data at Risk**: User credentials, personal information, business data\\n\\n");
+                    "2. **Enable WAF Rules**: Activate SQL injection protection in your Web Application Firewall\n");
+            response.append("3. **Code Review**: Audit application code for SQL injection vulnerabilities\n");
+            response.append("4. **Parameterized Queries**: Ensure all database queries use prepared statements\n");
+            response.append("5. **Database Audit**: Check logs for successful injections\n\n");
 
-            response.append("### 🛠️ URGENT Remediation\\n");
-            response.append("1. **Immediate Block**:\\n");
-            response.append("   ```bash\\n");
-            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -p tcp --dport " + destPort + " -j DROP\\n");
-            response.append("   ```\\n");
-            response.append(
-                    "2. **Enable WAF Rules**: Activate SQL injection protection in your Web Application Firewall\\n");
-            response.append("3. **Code Review**: Audit application code for SQL injection vulnerabilities\\n");
-            response.append("4. **Parameterized Queries**: Ensure all database queries use prepared statements\\n");
-            response.append("5. **Database Audit**: Check logs for successful injections\\n\\n");
-
-            response.append("### 🔍 Investigation\\n");
-            response.append("```bash\\n");
-            response.append("# Review web server access logs\\n");
+            response.append("### 🔍 Investigation\n");
+            response.append("```bash\n");
+            response.append("# Review web server access logs\n");
             response.append("sudo grep " + sourceIp
-                    + " /var/log/nginx/access.log | grep -i \"union\\|select\\|drop\\|insert\"\\n\\n");
-            response.append("# Check database query logs\\n");
-            response.append("sudo tail -100 /var/log/mysql/mysql.log\\n");
-            response.append("```\\n");
+                    + " /var/log/nginx/access.log | grep -i \"union\\|select\\|drop\\|insert\"\n\n");
+            response.append("# Check database query logs\n");
+            response.append("sudo tail -100 /var/log/mysql/mysql.log\n");
+            response.append("```\n");
 
         } else if (isSsh) {
-            response.append("**Threat Detected**: SSH Brute-Force Attack\\n\\n");
-            response.append("**Attack Profile**:\\n");
-            response.append("* **Attacker**: " + sourceIp + "\\n");
-            response.append("* **Target SSH Server**: " + destIp + ":22\\n");
-            response.append("* **Attack Type**: " + signature + "\\n");
-            response.append("* **Time**: " + timestamp + "\\n\\n");
+            response.append("**Threat Detected**: SSH Brute-Force Attack\n\n");
+            response.append("**Attack Profile**:\n");
+            response.append("* **Attacker**: " + sourceIp + "\n");
+            response.append("* **Target SSH Server**: " + destIp + ":22\n");
+            response.append("* **Attack Type**: " + signature + "\n");
+            response.append("* **Time**: " + timestamp + "\n\n");
 
             response.append(
                     "Repeated SSH login attempts detected from **" + sourceIp + "** targeting **" + destIp + "**. ");
             response.append(
-                    "The attacker is systematically trying username/password combinations to gain unauthorized access.\\n\\n");
+                    "The attacker is systematically trying username/password combinations to gain unauthorized access.\n\n");
 
-            response.append("### ⚠️ Impact Assessment\\n");
-            response.append("* **Severity**: " + severity + "\\n");
-            response.append("* **Risk**: Unauthorized root access, system compromise, data theft\\n");
-            response.append("* **Target**: SSH service on " + destIp + "\\n\\n");
+            response.append("### ⚠️ Impact Assessment\n");
+            response.append("* **Severity**: " + severity + "\n");
+            response.append("* **Risk**: Unauthorized root access, system compromise, data theft\n");
+            response.append("* **Target**: SSH service on " + destIp + "\n\n");
 
-            response.append("### 🛠️ Remediation Steps\\n");
-            response.append("1. **Block Attacker**:\\n");
-            response.append("   ```bash\\n");
-            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -p tcp --dport 22 -j DROP\\n");
-            response.append("   ```\\n");
-            response.append("2. **Install fail2ban** (if not already installed):\\n");
-            response.append("   ```bash\\n");
-            response.append("   sudo apt-get install fail2ban\\n");
-            response.append("   sudo systemctl enable fail2ban\\n");
-            response.append("   ```\\n");
-            response.append("3. **Disable Password Authentication**: Switch to key-based auth only\\n");
-            response.append("4. **Change SSH Port**: Move SSH to non-standard port (e.g., 2222)\\n");
-            response.append("5. **Review Successful Logins**: Check if attacker succeeded\\n\\n");
+            response.append("### 🛠️ Remediation Steps\n");
+            response.append("1. **Block Attacker**:\n");
+            response.append("   ```bash\n");
+            response.append("   sudo iptables -A INPUT -s " + sourceIp + " -p tcp --dport 22 -j DROP\n");
+            response.append("   ```\n");
+            response.append("2. **Install fail2ban** (if not already installed):\n");
+            response.append("   ```bash\n");
+            response.append("   sudo apt-get install fail2ban\n");
+            response.append("   sudo systemctl enable fail2ban\n");
+            response.append("   ```\n");
+            response.append("3. **Disable Password Authentication**: Switch to key-based auth only\n");
+            response.append("4. **Change SSH Port**: Move SSH to non-standard port (e.g., 2222)\n");
+            response.append("5. **Review Successful Logins**: Check if attacker succeeded\n\n");
 
-            response.append("### 🔍 Investigation\\n");
-            response.append("```bash\\n");
-            response.append("# Check failed login attempts\\n");
-            response.append("sudo grep \"Failed password\" /var/log/auth.log | grep " + sourceIp + " | wc -l\\n\\n");
-            response.append("# Check for successful logins (CRITICAL)\\n");
-            response.append("sudo grep \"Accepted password\" /var/log/auth.log | grep " + sourceIp + "\\n\\n");
-            response.append("# Current SSH sessions\\n");
-            response.append("who | grep ssh\\n");
-            response.append("```\\n");
+            response.append("### 🔍 Investigation\n");
+            response.append("```bash\n");
+            response.append("# Check failed login attempts\n");
+            response.append("sudo grep \"Failed password\" /var/log/auth.log | grep " + sourceIp + " | wc -l\n\n");
+            response.append("# Check for successful logins (CRITICAL)\n");
+            response.append("sudo grep \"Accepted password\" /var/log/auth.log | grep " + sourceIp + "\n\n");
+            response.append("# Current SSH sessions\n");
+            response.append("who | grep ssh\n");
+            response.append("```\n");
 
         } else if (isWebAttack) {
-            response.append("**Threat Detected**: Web Application Attack\\n\\n");
-            response.append("**Attack Context**:\\n");
-            response.append("* **Source**: " + sourceIp + "\\n");
-            response.append("* **Target Web Server**: " + destIp + ":" + destPort + "\\n");
-            response.append("* **Protocol**: " + protocol + "\\n");
-            response.append("* **Signature**: " + signature + "\\n");
-            response.append("* **Category**: " + category + "\\n\\n");
+            response.append("**Threat Detected**: Web Application Attack\n\n");
+            response.append("**Attack Context**:\n");
+            response.append("* **Source**: " + sourceIp + "\n");
+            response.append("* **Target Web Server**: " + destIp + ":" + destPort + "\n");
+            response.append("* **Protocol**: " + protocol + "\n");
+            response.append("* **Signature**: " + signature + "\n");
+            response.append("* **Category**: " + category + "\n\n");
 
             response.append("Suspicious HTTP/HTTPS traffic detected targeting your web application. ");
             response.append(
-                    "This could indicate various web-based attacks including XSS, directory traversal, or file inclusion attempts.\\n\\n");
+                    "This could indicate various web-based attacks including XSS, directory traversal, or file inclusion attempts.\n\n");
 
-            response.append("### ⚠️ Impact Assessment\\n");
-            response.append("* **Severity**: " + severity + "\\n");
-            response.append("* **Risk**: Web application compromise, data exposure\\n");
-            response.append("* **Affected Service**: Web server on " + destIp + ":" + destPort + "\\n\\n");
+            response.append("### ⚠️ Impact Assessment\n");
+            response.append("* **Severity**: " + severity + "\n");
+            response.append("* **Risk**: Web application compromise, data exposure\n");
+            response.append("* **Affected Service**: Web server on " + destIp + ":" + destPort + "\n\n");
 
-            response.append("### 🛠️ Remediation Steps\\n");
-            response.append("1. **Block Malicious IP**: `sudo iptables -A INPUT -s " + sourceIp + " -j DROP`\\n");
-            response.append("2. **Enable WAF**: Configure Web Application Firewall rules\\n");
-            response.append("3. **Update Application**: Ensure all web apps are patched\\n");
-            response.append("4. **Input Validation**: Review and strengthen input sanitization\\n\\n");
+            response.append("### 🛠️ Remediation Steps\n");
+            response.append("1. **Block Malicious IP**: `sudo iptables -A INPUT -s " + sourceIp + " -j DROP`\n");
+            response.append("2. **Enable WAF**: Configure Web Application Firewall rules\n");
+            response.append("3. **Update Application**: Ensure all web apps are patched\n");
+            response.append("4. **Input Validation**: Review and strengthen input sanitization\n\n");
 
-            response.append("### 🔍 Investigation\\n");
-            response.append("```bash\\n");
-            response.append("# Review web access logs\\n");
-            response.append("sudo grep " + sourceIp + " /var/log/nginx/access.log | tail -50\\n");
-            response.append("```\\n");
+            response.append("### 🔍 Investigation\n");
+            response.append("```bash\n");
+            response.append("# Review web access logs\n");
+            response.append("sudo grep " + sourceIp + " /var/log/nginx/access.log | tail -50\n");
+            response.append("```\n");
 
         } else {
             // Generic response with ALL extracted details for maximum personalization
-            response.append("**Threat Detected**: " + signature + "\\n\\n");
-            response.append("**Alert Details**:\\n");
+            response.append("**Threat Detected**: " + signature + "\n\n");
+            response.append("**Alert Details**:\n");
             response.append("* **Source**: " + sourceIp);
             if (!sourcePort.equals("Unknown") && !sourcePort.equals("N/A")) {
                 response.append(":" + sourcePort);
             }
-            response.append("\\n");
+            response.append("\n");
             response.append("* **Destination**: " + destIp);
             if (!destPort.equals("Unknown") && !destPort.equals("N/A")) {
                 response.append(":" + destPort);
             }
-            response.append("\\n");
-            response.append("* **Protocol**: " + protocol + "\\n");
-            response.append("* **Category**: " + category + "\\n");
-            response.append("* **Severity**: " + severity + "\\n");
-            response.append("* **Signature ID**: " + signatureId + "\\n");
-            response.append("* **Timestamp**: " + timestamp + "\\n\\n");
+            response.append("\n");
+            response.append("* **Protocol**: " + protocol + "\n");
+            response.append("* **Category**: " + category + "\n");
+            response.append("* **Severity**: " + severity + "\n");
+            response.append("* **Signature ID**: " + signatureId + "\n");
+            response.append("* **Timestamp**: " + timestamp + "\n\n");
 
             response.append("Anomalous network activity detected. The traffic pattern from **" + sourceIp + "** to **"
                     + destIp + "** ");
-            response.append("deviates from normal baseline behavior and requires investigation.\\n\\n");
+            response.append("deviates from normal baseline behavior and requires investigation.\n\n");
 
-            response.append("### ⚠️ Impact Assessment\\n");
-            response.append("* **Severity**: " + severity + "\\n");
-            response.append("* **Risk**: Requires manual analysis to determine threat level\\n");
-            response.append("* **Affected System**: " + destIp + "\\n\\n");
+            response.append("### ⚠️ Impact Assessment\n");
+            response.append("* **Severity**: " + severity + "\n");
+            response.append("* **Risk**: Requires manual analysis to determine threat level\n");
+            response.append("* **Affected System**: " + destIp + "\n\n");
 
-            response.append("### 🛠️ Recommended Actions\\n");
-            response.append("1. **Investigate Source**: Research IP reputation for " + sourceIp + "\\n");
-            response.append("2. **Packet Capture**: Analyze full packet data for this connection\\n");
-            response.append("3. **Baseline Review**: Compare with normal traffic patterns\\n");
+            response.append("### 🛠️ Recommended Actions\n");
+            response.append("1. **Investigate Source**: Research IP reputation for " + sourceIp + "\n");
+            response.append("2. **Packet Capture**: Analyze full packet data for this connection\n");
+            response.append("3. **Baseline Review**: Compare with normal traffic patterns\n");
             response.append(
-                    "4. **Temporary Isolation**: Consider quarantining " + destIp + " if behavior persists\\n\\n");
+                    "4. **Temporary Isolation**: Consider quarantining " + destIp + " if behavior persists\n\n");
 
-            response.append("### 🔍 Investigation\\n");
-            response.append("```bash\\n");
-            response.append("# Capture traffic from source\\n");
-            response.append("sudo tcpdump -i any -n src " + sourceIp + " -w /tmp/capture.pcap -c 100\\n\\n");
-            response.append("# Check IP reputation\\n");
-            response.append("whois " + sourceIp + "\\n\\n");
-            response.append("# Review recent activity\\n");
-            response.append("sudo grep " + sourceIp + " /var/log/syslog | tail -20\\n");
-            response.append("```\\n");
+            response.append("### 🔍 Investigation\n");
+            response.append("```bash\n");
+            response.append("# Capture traffic from source\n");
+            response.append("sudo tcpdump -i any -n src " + sourceIp + " -w /tmp/capture.pcap -c 100\n\n");
+            response.append("# Check IP reputation\n");
+            response.append("whois " + sourceIp + "\n\n");
+            response.append("# Review recent activity\n");
+            response.append("sudo grep " + sourceIp + " /var/log/syslog | tail -20\n");
+            response.append("```\n");
         }
 
-        response.append("\\n---\\n");
-        response.append("*AI Security Assistant (Smart Fallback Mode) - Analysis generated at " + timestamp + "*\\n");
+        response.append("\n---\n");
+        response.append("*AI Security Assistant (Smart Fallback Mode) - Analysis generated at " + timestamp + "*\n");
         response.append("*Alert ID: " + signatureId + " | Severity: " + severity + "*");
 
         return response.toString();
