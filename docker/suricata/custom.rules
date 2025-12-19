@@ -22,7 +22,7 @@ alert tcp any any -> any any (msg:"CUSTOM Rapid SYN Scan"; flags:S; threshold:ty
 
 # Individual SYN Packet Tracking (for manual flood detection)
 # This rule captures EVERY SYN packet - will generate many alerts!
-alert tcp any any -> any any (msg:"CUSTOM SYN Packet Detected"; flags:S,12; classtype:misc-activity; priority:4; sid:1000022; rev:2;)
+alert tcp any any -> any any (msg:"CUSTOM SYN Packet Detected"; flags:S; classtype:misc-activity; priority:4; sid:1000022; rev:3;)
 
 # Command Injection
 alert http any any -> any any (msg:"CUSTOM Command Injection - Pipe Character"; flow:established,to_server; content:"|7c|"; http_uri; content:"cat"; http_uri; nocase; distance:0; classtype:web-application-attack; sid:1000012; rev:1;)

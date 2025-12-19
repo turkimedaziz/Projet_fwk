@@ -7,6 +7,7 @@ import tn.rnu.eniso.fwk.scan.core.dal.repository.AlertRepository;
 import tn.rnu.eniso.fwk.scan.core.infra.model.Alert;
 import tn.rnu.eniso.fwk.scan.core.service.api.AiAssistantService;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -23,10 +24,14 @@ public class AiAssistantServiceImpl implements AiAssistantService {
 
     private final HuggingFaceClient huggingFaceClient;
     private final AlertRepository alertRepository;
+    private final DailyThreatService dailyThreatService;
 
-    public AiAssistantServiceImpl(HuggingFaceClient huggingFaceClient, AlertRepository alertRepository) {
+    public AiAssistantServiceImpl(HuggingFaceClient huggingFaceClient,
+            AlertRepository alertRepository,
+            DailyThreatService dailyThreatService) {
         this.huggingFaceClient = huggingFaceClient;
         this.alertRepository = alertRepository;
+        this.dailyThreatService = dailyThreatService;
     }
 
     private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
@@ -76,28 +81,14 @@ public class AiAssistantServiceImpl implements AiAssistantService {
             // Build focused remediation prompt
             String alertDetails = formatAlertDetails(alert);
 
-            String specificInstructions = "";
-            if (alert.getSignature() != null && (alert.getSignature().contains("DDoS")
-                    || alert.getSignature().contains("Flooding") || alert.getSignature().contains("SYN"))) {
-                specificInstructions = """
-                        CRITICAL: This appears to be a Denial of Service attack.
-                        You MUST provide:
-                        1. Immediate blocking commands using 'iptables' to drop traffic from the source IP.
-                        2. Commands to verify the attack (e.g., netstat, tcpdump).
-                        3. Rate limiting configuration examples.
-                        """;
-            }
-
             String prompt = String.format("""
                     You are a cybersecurity expert. Provide ONLY specific remediation steps for this security alert.
-
-                    %s
 
                     Alert: %s
 
                     Provide 5-7 concrete, actionable steps to remediate this security issue.
                     Format as a numbered list. Be specific and technical.
-                    """, specificInstructions, alertDetails);
+                    """, alertDetails);
 
             String remediation = huggingFaceClient.generateResponse(prompt);
 
@@ -149,8 +140,15 @@ public class AiAssistantServiceImpl implements AiAssistantService {
         log.info("Generating security summary for period: {} to {}", start, end);
 
         try {
-            // Fetch alerts in the time range
-            List<Alert> alerts = alertRepository.findByTimestampBetween(start, end);
+            // Fetch alerts from Redis for today if the range is within today
+            List<Alert> alerts;
+            if (start.toLocalDate().equals(LocalDate.now()) && end.toLocalDate().equals(LocalDate.now())) {
+                log.info("Fetching today's alerts from Redis for security summary");
+                alerts = dailyThreatService.getTodayAlerts();
+            } else {
+                log.info("Fetching alerts from DB for security summary (range: {} to {})", start, end);
+                alerts = alertRepository.findByTimestampBetween(start, end);
+            }
 
             if (alerts.isEmpty()) {
                 return "No security alerts found in the specified time period.";

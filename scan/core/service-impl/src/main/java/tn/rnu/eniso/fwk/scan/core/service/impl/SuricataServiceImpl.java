@@ -223,13 +223,18 @@ public class SuricataServiceImpl implements SuricataService {
             // Cache to Redis for AI analysis and update stats
             dailyThreatService.cacheAlert(savedAlert);
 
-            // Check for SYN Flood: Track individual SYN packets
-            boolean isSynPacket = "CUSTOM SYN Packet Detected".equals(savedAlert.getSignature());
+            // Check for SYN Flood: Track individual SYN packets or rapid scans
+            boolean isSynPacket = "CUSTOM SYN Packet Detected".equals(savedAlert.getSignature())
+                    || "CUSTOM Rapid SYN Scan".equals(savedAlert.getSignature());
+
+            boolean isManualSynFlood = false;
             if (isSynPacket) {
                 // Increment the SYN flood counter for this source->dest pair
-                boolean isFlooding = dailyThreatService.isSynFlood(savedAlert.getSourceIp(), savedAlert.getDestIp());
+                isManualSynFlood = dailyThreatService.isSynFlood(savedAlert.getSourceIp(), savedAlert.getDestIp());
+                log.info("SYN Flood check for {} -> {}: isManualSynFlood={}",
+                        savedAlert.getSourceIp(), savedAlert.getDestIp(), isManualSynFlood);
 
-                if (isFlooding) {
+                if (isManualSynFlood) {
                     // Generate critical alert after 10 SYN packets
                     String floodSignature = "Potential DDoS/Flooding: SYN Flood Detected";
 
@@ -272,19 +277,6 @@ public class SuricataServiceImpl implements SuricataService {
             // "CUSTOM Rapid SYN Scan" is already aggregated by Suricata (count 20), so we
             // treat it as flooding immediately
             boolean isSynScan = "CUSTOM Rapid SYN Scan".equals(savedAlert.getSignature());
-
-            // Also check for manual SYN flood detection (Source -> Dest > 10 packets)
-            boolean isManualSynFlood = false;
-            if (savedAlert.getProtocol() != null && "TCP".equalsIgnoreCase(savedAlert.getProtocol())) {
-                // We don't have direct access to flags here easily without parsing payload or
-                // flow,
-                // but we can infer from signature or just count all TCP from src->dest for now
-                // if signature is generic
-                // Ideally we should check flags, but for now let's rely on the fact that these
-                // are alerts.
-                // Actually, let's trust the DailyThreatService to count.
-                isManualSynFlood = dailyThreatService.isSynFlood(savedAlert.getSourceIp(), savedAlert.getDestIp());
-            }
 
             if (isSynScan || isManualSynFlood || dailyThreatService.isFlooding(savedAlert)) {
                 String floodSignature = "Potential DDoS/Flooding: " + savedAlert.getSignature();

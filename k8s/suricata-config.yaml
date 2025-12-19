@@ -10,7 +10,7 @@ data:
     # Suricata configuration for IDS mode
     vars:
       address-groups:
-        HOME_NET: "[192.168.169.0/24]"
+        HOME_NET: "[192.168.100.0/24]"
         EXTERNAL_NET: "!$HOME_NET"
         HTTP_SERVERS: "$HOME_NET"
         SMTP_SERVERS: "$HOME_NET"
@@ -256,3 +256,5 @@ data:
     # File Upload Attempts
     alert http any any -> any any (msg:"CUSTOM Suspicious File Upload - PHP"; flow:established,to_server; content:"Content-Type|3a| multipart/form-data"; http_header; content:".php"; http_client_body; nocase; classtype:web-application-attack; sid:1000020; rev:1;)
     alert http any any -> any any (msg:"CUSTOM Suspicious File Upload - JSP"; flow:established,to_server; content:"Content-Type|3a| multipart/form-data"; http_header; content:".jsp"; http_client_body; nocase; classtype:web-application-attack; sid:1000021; rev:1;)
+    # Individual SYN Packet Tracking (for manual flood detection)
+    alert tcp any any -> any any (msg:"CUSTOM SYN Packet Detected"; flags:S; classtype:misc-activity; priority:4; sid:1000022; rev:3;)
